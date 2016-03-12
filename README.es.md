@@ -143,7 +143,6 @@ En el ejemplo 1 creamos un contador básico pero ¿cómo escala este patrón si 
 
 ¿No sería genial si pudiésemos reutilizar todo el código del ejemplo 1? Lo sorprendente de la Arquitectura Elm es que **podemos reutilizar código sin cambiar absolutamente nada**. Cuando creamos el módulo `Counter` en el ejemplo anterior, encapsulamos todos los detalles de implementación así que podemos utilizarlo en cualquier otro sitio:
 
-
 ```elm
 module Counter (Model, init, Action, update, view) where
 
@@ -157,6 +156,70 @@ update : Action -> Model -> Model
 
 view : Signal.Address Action -> Model -> Html
 ```
+
+Escribir código modular tiene que ver con crear abstracciones sólidas. Queremos fronteras que expongan funcionalidad pero oculten la implementación de forma apropiada. Desde fuera del módulo `Counter`, sólo vemos un conjunto básico de valores: `Model`, `init`, `Action`, `update` y `view`. No nos interesa cómo están implementadas esas cosas. De hecho, es **imposible** saber cómo están implementadas. Esto implica que nadie puede depender de los detalles de implementación que no se han hecho públicos.
+
+Así que podemos reutilizar nuestro módulo `Counter`, pero ahora lo usaremos para crear nuestro `CounterPair` (par de contadores). Como siempre, comenzamos con un `Model`:
+
+```elm
+type alias Model =
+    { topCounter : Counter.Model
+    , bottomCounter : Counter.Model
+    }
+
+init : Int -> Int -> Model
+init top bottom =
+    { topCounter = Counter.init top
+    , bottomCounter = Counter.init bottom
+    }
+```
+
+Nuestro modelo es un registro con dos campos, uno para cada uno de los contadores que queremos mostrar en pantalla. Esto describe por completo todo el estado de la aplicación. Además tenemos una función `init` para crear un nuevo `Model` cuando queramos.
+
+Después describimos el conjunto de **acciones** que queremos soportar. Esta vez nuestras características deberían ser: reiniciar todos los contadores, actualizar el contador superior (`topCounter`) o actualizar el inferior (`bottomCounter`).
+
+```elm
+type Action
+    = Reset
+    | Top Counter.Action
+    | Bottom Counter.Action
+```
+
+Fíjate que nuestro [tipo unión][] hace referencia al tipo `Counter.Action`, pero no sabemos los detalles de esas acciones. Cuando escribamos nuestra función `update`, estamos principalmente dirigiendo esas `Counter.Actions` al sitio correcto:
+
+```elm
+update: Action -> Model -> Model
+update action model =
+  case action of  
+    Reset -> init 0 0
+
+    Top act ->
+      { model | 
+          topCounter = Counter.update act model.topCounter
+      }
+
+    Bottom act ->
+      { model |
+          bottomCounter = Counter.update act model.bottomCounter  
+      }
+```
+
+Y por último nos falta escribir una función `view` que muestre ambos contadores en pantalla, junto a un botón de reinicio.
+
+```elm
+view : Signal.Address Action -> Model -> Html
+view address model =
+  div []
+    [ Counter.view (Signal.forwardTo address Top) model.topCounter
+    , Counter.view (Signal.forwardTo address Bottom) model.bottomCounter
+    , button [ onClick address Reset ] [ text "RESET" ]
+    ]
+```
+
+Observa cómo podemos reutilizar la función `Counter.view` para los dos contadores. Para cada uno de ellos creamos una dirección de reenvío. Básicamente lo que estamos haciendo es decir, &ldquo;estos contadores etiquetan todos los mensajes salientes con `Top` o `Bottom` para que podamos distinguirlos.&rdquo;
+
+Y eso es todo. Lo que es genial es que podemos seguir anidando mñas y más. Podemos coger el módulo `CounterPair`, exponer ciertos valores y funciones clave, y crear un par de pares de contadores en `CounterPairPair` o cualquier cosa que necesitemos.
+
 
 
 
