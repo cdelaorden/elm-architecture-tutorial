@@ -311,11 +311,11 @@ Este truco del ID se puede emplear siempre que quieras un número dinámico de s
 ### Ejemplo 4: Una lista más guay de Contadores
 **[demo](http://evancz.github.io/elm-architecture-tutorial/examples/4.html) / [ver código](examples/4/)**
 
-Vale, mantener las cosas simples y modulares con una lista dinámica de contadores es genial, pero en lugar de un botón general de eliminar, ¿qué pasaría si cada contador tuviera su botón específico de eliminar? ¡Seguro que *eso* nos va complica las cosas!
+Vale, mantener las cosas simples y modulares con una lista dinámica de contadores es genial, pero en lugar de un botón general de eliminar, ¿qué pasaría si cada contador tuviera su botón específico de eliminar? ¡Seguro que *eso* nos va complicar las cosas!
 
 Nah, funciona.
 
-En este caso nuestros objetivos significan que necesitamos una manera de ver un `Counter` que añada un botón de eliminar. Curiosamente, podemos mantener la función `view` de la versión anterior y añadir una nueva función `viewWithRemoveButton` (vista con botón eliminar) al módulo `Counter` que proporcione una vista ligeramente diferente de nuestro `Model` subyacente. Es bastante guay. No necesitamos duplicar código o hacer locuras con tipos derivados o sobrecargas. ¡Simplemente añadimos una nueva función a la API pública para exponer la nueva funcionalidad!
+En este caso nuestro objetivo implica que necesitamos una manera de mostrar un `Counter` con un botón de eliminar. Curiosamente, podemos mantener la función `view` de la versión anterior y añadir una nueva función `viewWithRemoveButton` (vista con botón eliminar) al módulo `Counter` que proporcione una vista ligeramente diferente de nuestro `Model` subyacente. Es bastante guay. No necesitamos duplicar código o hacer locuras con tipos derivados o sobrecargas. ¡Simplemente añadimos una nueva función a la API pública para exponer la nueva funcionalidad!
 
 ```elm
 module Counter (Model, init, Action, update, view, viewWithRemoveButton, Context) where
@@ -337,7 +337,7 @@ viewWithRemoveButton context model =
     , button [ onClick context.remove () ] [ text "X" ]
     ]
 ```
-La función `viewWithRemoveButton` añade el botón extra. Observa que los botones incrementar/decrementar envían mensajes a la dirección `actions` pero el de eliminar los envía a la dirección `remove`. Estos mensajes que enviamos a `remove` básicamente dicen, &ldquo;¡oye, quien pertenezca, elimíname!&rdquo; Es tarea de quien quiera que sea dueño de ese contador particular llevar a cabo la eliminación.
+La función `viewWithRemoveButton` añade el botón extra. Observa que los botones incrementar/decrementar envían mensajes a la dirección `actions` pero el de eliminar los envía a la dirección `remove`. Estos mensajes que enviamos a `remove` básicamente dicen, &ldquo;¡oye, a quien pertenezca, elimíname!&rdquo; Es tarea de quien quiera que sea dueño de ese contador particular llevar a cabo la eliminación.
 
 Ahora que ya tenemos nuestra nueva función `viewWithRemoveButton`, podemos crear un módulo `CounterList` que incluya todos los contadores individuales. El `Model` es idéntico al del ejemplo 3: una lista de contadores y un ID único.
 
@@ -384,7 +384,7 @@ update action model =
       in
           { model | counters = List.map updateCounter model.counters }
 ```
-En el caso de `Remove`, sacamos el contador cuyo ID coincide con el que tenemos que eliminar, filtrando la lista. El resto de casos son casi iguales a cómo eran antes.
+En el caso de `Remove`, sacamos el contador cuyo ID coincide con el que tenemos que eliminar, filtrando la lista con una función anónima definida en línea que devuelve verdadero si el ID del elemento es *distinto* al ID que queremos eliminar. El resto de casos son casi iguales a cómo eran antes.
 
 Para terminar, unimos todas las piezas en la función `view`:
 
@@ -421,7 +421,7 @@ view : Context' -> Model -> Html
 
 En cada nivel de profundidad podemos derivar el `Context` específico necesario para cada submódulo.
 
-**Testing sencillo** &mdasg; Todas las funciones que hemos creado son [funciones puras][pure]. Esto hace que sea extremadamente fácil probar tu función `update`. No hace falta inicializar, simular ni configurar nada, simplemente llamas a la función con los argumentos que querrías testar.
+**Testing sencillo** &mdash; Todas las funciones que hemos creado son [funciones puras][pure]. Esto hace que sea extremadamente fácil probar tu función `update`. No hace falta inicializar, simular ni configurar nada, simplemente llamas a la función con los argumentos que quieras testar.
 
 [pure]: http://en.wikipedia.org/wiki/Pure_function
 
@@ -448,7 +448,7 @@ init : String -> (Model, Effects Action)
 
 update : Action -> Model -> (Model, Effects Action)
 ```
-En lugar de devolver solo un nuevo `Model` también devolvemos algunos efectos que nos gustaría ejecutar. Así que utilizaremos la API de `Effects` [fx_api], que es más o menos algo como esto:
+En lugar de devolver solo un nuevo `Model` también devolvemos algunos efectos que nos gustaría ejecutar. Así que utilizaremos la [API de `Effects`][fx_api], que es más o menos algo como esto:
 
 [fx_api]: http://package.elm-lang.org/packages/evancz/elm-effects/latest/Effects
 
@@ -510,7 +510,7 @@ init topic =
 ```
 Como hemos dicho, cuando el efecto del GIF aleatorio termine, producirá una `Action` que será recibida por nuestra función `update`.
 
-> **Nota:** Hasta ahora hemos estado utilizando el módulo `StartApp.Simple` del [paquete start-app](http://package.elm-lang.org/packages/evancz/start-app/latest), pero esta vez lo actualizamos al módulo `StartApp`, que es capaz de gestionar la complejidad de apps web más realistas. Tiene una [API ligeramente más elaborada](http://package.elm-lang.org/packages/evancz/start-app/latest/StartApp). El cambio crucial es que puede manejar nuestras nuevos tipos en `init` y `update`.
+> **Nota:** Hasta ahora hemos estado utilizando el módulo `StartApp.Simple` del [paquete start-app](http://package.elm-lang.org/packages/evancz/start-app/latest), pero esta vez lo actualizamos al módulo `StartApp`, que es capaz de gestionar la complejidad de apps web más realistas. Tiene una [API ligeramente más elaborada](http://package.elm-lang.org/packages/evancz/start-app/latest/StartApp). El cambio crucial es que puede manejar nuestros nuevos tipos devueltos en `init` y `update`.
 
 Uno de los aspectos cruciales de este ejemplo es la función `getRandomGif` que realmente describe cómo obtener un GIF aleatorio. Utiliza [tasks][] (tareas) y el [paquete `Http`][http], y voy a intentar ofrecer una visión general de cómo se usan estas cosas a medida que lo vayamos viendo. Veamos el código:
 
@@ -555,7 +555,78 @@ Una vez hemos escrito esto, ya podemos reutilizar `getRandomGif` en nuestras fun
 
 Algo interesante sobre la tarea devuelta por `getRandomGif` es que no puede fallar `Never` (nunca). La idea es que cualquier posible fallo *tiene que* ser manejado de forma explícita. No queremos tareas que fallen silenciosamente.
 
-Voy a tratar de explicar exactamente cómo funciona eso, pero no es imprescindible comprender todos los detalles para utilizar estas cosas. Veamos, cada `Task` tiene un tipo "éxito" y un tipo "fallo". Por ejemplo, una tarea HTTP puede tener un tipo como `Task Http.Error String` tal que fallará con un `Http.Error` o terminará con éxito con un `String`. Esto hace que podamos encadenar de forma agradable varias tareas juntas sin preocuparnos demasiado por los errores. Supongamos que nuestro componente lanza una tarea, pero ésta falla. ¿Qué ocurre entonces? ¿Quién se entera? ¿Cómo nos recuperamos del error? Al hacer el tipo fallo `Never` forzamos que cualquier error vaya en el tipo "éxito" de forma que puede ser gestionado de forma explícita en el componente. En nuestro caso, usamos `Task.toMaybe: Task x a -> Task y (Maybe a` para que nuestra función `update` gestione los fallos de HTTP (con el `Maybe.withDefault` para dar un valor por defecto en caso de error). Esto significa que las tareas no pueden fallar sin que nos enteremos, ya que gestionamos los posibles errores manualmente, de forma explícita.
+Voy a tratar de explicar exactamente cómo funciona eso, pero no es imprescindible comprender todos los detalles para utilizar estas cosas. Veamos, cada `Task` tiene un tipo "éxito" y un tipo "fallo". Por ejemplo, una tarea HTTP puede tener un tipo como `Task Http.Error String` tal que fallará con un `Http.Error` o terminará con éxito con un `String`. Esto hace que podamos encadenar de forma agradable varias tareas juntas sin preocuparnos demasiado por los errores. Supongamos que nuestro componente lanza una tarea, pero ésta falla. ¿Qué ocurre entonces? ¿Quién se entera? ¿Cómo nos recuperamos del error? Al hacer el tipo fallo `Never` forzamos que cualquier error vaya en el tipo "éxito" de forma que puede ser gestionado de forma explícita en el componente. En nuestro caso, usamos `Task.toMaybe` para que nuestra función `update` gestione los fallos de HTTP (con el `Maybe.withDefault` para dar un valor por defecto en caso de error). Esto significa que las tareas no pueden fallar sin que nos enteremos, ya que gestionamos los posibles errores manualmente, de forma explícita.
+
+### Ejemplo 6: Par de visores de GIFs aleatorios
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/6.html) / [ver código](examples/6/)**
+
+De acuerdo, podemos hacer efectos, pero ¿qué hay de efectos *anidados*? ¿Pensaste en ese caso? Esta versión utiliza el código intacto del ejemplo 5 para crear un par de visores de GIFs independientes.
+
+Cuando leas [la implementación](examples/6/RandomGifPair.elm), observa que es muy similar al código del par de contadores del ejemplo 2. El `Model` se define con dos valores de tipo `RandomGif.Model`:
+
+```elm
+type alias Model =
+    { left : RandomGif.Model
+    , right : RandomGif.Model
+    }
+```
+
+Esto nos permite gestionar cada uno de forma independiente. Por tanto, nuestras acciones simplemente encaminan los mensajes al subcomponente apropiado.
+
+```elm
+type Action
+    = Left RandomGif.Action
+    | Right RandomGif.Action
+```
+
+Los interesante es que utilizamos realmente las etiquetas `Left` y `Right` un poco en nuestras funciones `update` e `init`.
+
+```elm
+-- Effects.map : (a -> b) -> Effects a -> Effects b
+
+update : Action -> Model -> (Model, Effects Action)
+update action model =
+  case action of
+    Left msg ->
+      let
+        (left, fx) = RandomGif.update msg model.left
+      in
+        ( Model left model.right
+        , Effects.map Left fx
+        )
+
+    Right msg ->
+      let
+        (right, fx) = RandomGif.update msg model.right
+      in
+        ( Model model.left right
+        , Effects.map Right fx
+        )
+```
+
+En cada rama llamamos a `RandomGif.update` (la del ejemplo anterior) que nos devuelve un nuevo modelo y algunos efectos que llamamos `fx`. Devolvemos un modelo actualizado como siempre, pero tenemos que hacer trabajo extra sobre nuestros efectos. En lugar de devolverlos directamente, utilizamos la función [`Effects.map`](http://package.elm-lang.org/packages/evancz/elm-effects/latest/Effects#map) para transformarlos en el mismo tipo de `Action`. Esto funciona muy parecido a `Signal.forwardTo`, permitiéndonos etiquetar los valores para clarificar cómo deberían ser atendidos.
+
+Lo mismo ocurre en la función `init`. Proporcionamos un tema para cada visor de GIFs aleatorios y obtenemos un modelo inicial y efectos, para cada uno de ellos.
+
+```elm
+init : String -> String -> (Model, Effects Action)
+init leftTopic rightTopic =
+  let
+    (left, leftFx) = RandomGif.init leftTopic
+    (right, rightFx) = RandomGif.init rightTopic
+  in
+    ( Model left right
+    , Effects.batch
+        [ Effects.map Left leftFx
+        , Effects.map Right rightFx
+        ]
+    )
+
+-- Effects.batch : List (Effects a) -> Effects a
+```
+
+En este caso no solo utilizamos `Effects.map` para etiquetar los resultados, sino también la función [`Effects.batch`](http://package.elm-lang.org/packages/evancz/elm-effects/latest/Effects#batch) para meter todos es un mismo saco. Todas las tareas solicitadas serán ejecutadas de forma independiente, y por tanto los efectos de `right` y `left` avanzarán simultáneamente.
+
 
 
 
