@@ -628,7 +628,123 @@ init leftTopic rightTopic =
 En este caso no solo utilizamos `Effects.map` para etiquetar los resultados, sino también la función [`Effects.batch`](http://package.elm-lang.org/packages/evancz/elm-effects/latest/Effects#batch) para meter todos es un mismo saco. Todas las tareas solicitadas serán ejecutadas de forma independiente, y por tanto los efectos de `right` y `left` avanzarán simultáneamente.
 
 
+## Ejemplo 7: Lista de visores de GIFs aleatorios
+
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/7.html) / [ver código](examples/7/)**
+
+Este ejemplo te permite tener una lista de visores de GIFs aleatorios en la que puedes establecer los temas tú mismo. De nuevo, reutilizaremos el módulo base `RandomGif` tal cual.
+
+En [la implementación](examples/7/RandomGifList.elm) verás que se corresponde exactamente con el ejemplo 3. Colocamos todos nuestros submodelos en una lista, asociados a un ID y realizamos las operaciones basándonos en esos IDs. La única novedad es que utilizamos `Effects` en las funciones `init` y `update`, agrupándolos con `Effects.map` y `Effects.batch` 
+
+Por favor, crea un issue si esta sección debería dar más detalles de cómo funcionan las cosas.
+
+## Ejemplo 8: Animación
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/8.html) / [ver código](examples/8/)**
+
+Ya hemos visto componentes con tareas que pueden componerse unos dentro de otros de cualquier manera pero, ¿cómo funciona esto con animaciones?
+
+Curiosamente, ¡es prácticamente igual! (O quizá ya no sea tan sorprendente que el mismo patrón de todos los demás ejercicios funcione ahora también... ¡Parece un buen patrón!)
+
+Este ejemplo es un par de cuadrados sobre los que puede hacer clic. Cuando haces clic en un cuadrado, rota 90 grados. El esquema es una forma adaptada del ejemplo 2 (par de contadores) y del ejemplo 6 (par de visores), escribiendo toda la lógica de la animación en `SpinSquare.elm` que luego reutilizamos en `SpinSquarePair.elm`.
+
+Puesto que todas las cosas interesantes y novedosas ocurren [en `SpinSquare`](examples/8/SpinSquare.elm), vamos a concentrarnos en ese código. Lo primero que necesitamos es un modelo:
+
+```elm
+type alias Model =
+    { angle : Float
+    , animationState : AnimationState
+    }
 
 
+type alias AnimationState =
+    Maybe { prevClockTime : Time,  elapsedTime: Time }
 
+
+rotateStep = 90
+duration = second
+```
+
+Nuestro modelo fundamental es el `angle` (ángulo) en el que está actualmente el cuadrado y un `animationState` que guarda qué está ocurriendo con una animación empezada. Si no hay ninguna es `Nothing`, pero si está en marcha contiene:
+
+* `prevClockTime` &mdash; El tiempo de reloj más reciente que emplearemos para calcular los diferenciales de tiempo. Nos ayudará a saber exactamente cuántos milisegundos han pasado desde el último fotograma.
+* `elapsedTime` &mdash; Un número entre 0 y `duration` que nos indica el progreso en la animación.
+
+La constante `rotateStep` simplemente define cuánto giramos el cuadrado con cada clic. Puedes cambiar este valor y todo funcionará igual.
+
+Lo verdadermanete interesante ocurre en `update`:
+
+```elm
+type Action
+    = Spin
+    | Tick Time
+
+
+update : Action -> Model -> (Model, Effects Action)
+update msg model =
+  case msg of
+    Spin ->
+      case model.animationState of
+        Nothing ->
+          ( model, Effects.tick Tick )
+
+        Just _ ->
+          ( model, Effects.none )
+
+    Tick clockTime ->
+      let
+        newElapsedTime =
+          case model.animationState of
+            Nothing ->
+              0
+
+            Just {elapsedTime, prevClockTime} ->
+              elapsedTime + (clockTime - prevClockTime)
+      in
+        if newElapsedTime > duration then
+          ( { angle = model.angle + rotateStep
+            , animationState = Nothing
+            }
+          , Effects.none
+          )
+        else
+          ( { angle = model.angle
+            , animationState = Just { elapsedTime = newElapsedTime, prevClockTime = clockTime }
+            }
+          , Effects.tick Tick
+          )
+```
+
+Hay dos tipos de `Action` que tenemos que gestionar:
+
+- `Spin` (girar) indica que el usuario ha hecho clic en el cuadrado, solicitando el giro. Por tanto en `update` pedimos un nuevo tick de reloj si no había animación en marcha o dejamos todo igual si ya había una empezada.
+- `Tick` indica que ha pasado un ciclo de reloj por lo que tenemos que avanzar un paso la animación, por lo que en `update` tenemos que modificar el estado de la animación (`animationState`) en nuestro modelo. Primero, comprobamos si hay alguna animación en marcha. Si es así, calculamos el nuevo tiempo transcurrido `newElapsedTime` sumando el tiempo de reloj actual y restando el anterior. Si este nuevo tiempo transcurrido es mayor que la duración total `duration` paramos la animación y dejamos de pedir ciclos de reloj. De lo contrario, actualizamos el estado de la animación y solicitamos otro tick.
+
+Una vez más, creo que podemos recortar este código a medida que escribamos más código parecido y veamos aparecer el patrón general. ¡Debería ser divertido encontrarlo!
+
+Para terminar tenemos una función `view` un tanto interesante. Este ejemplo nos muestra una llamativa animación con rebote, pero simplemente estamos incrementando nuestro `elapsedTime` en el modelo en tramos lineares. ¿Cómo ocurre eso?
+
+El código de `view` es [`elm-svg`](http://package.elm-lang.org/packages/evancz/elm-svg/latest/) estándar para generar formas clicables un poco elaboradas. La parte interesante del código de la vista es `toOffset`, que calcula la rotación a aplicar para el `AnimationState` actual.
+
+```elm
+-- import Easing exposing (ease, easeOutBounce, float)
+
+toOffset : AnimationState -> Float
+toOffset animationState =
+  case animationState of
+    Nothing ->
+      0
+
+    Just {elapsedTime} ->
+      ease easeOutBounce float 0 rotateStep duration elapsedTime
+```
+
+Estamos utilizando el [paquete de easing](http://package.elm-lang.org/packages/Dandandan/Easing/latest) de [@Dandandan](https://github.com/Dandandan), que nos permite aplicar fácilmente todo tipo de funciones de suavizado ([easings]((http://easings.net/))) sobre números, colores, puntos o cualquier otra cosa loca que se te ocurra.
+
+La función `ease` toma un número entre 0 y `duration`, y lo convierte a un número entre 0 y `rotateStep` que hemos establecido a 90 grados al comienzo del programa. Además proporcionamos un suavizado. En nuestro caso le pasamos `easeOutBounce` lo que significa que cuando vayamos avanzando entre 0 y `duration`, obtendremos un número entre 0 y 90 con ese suavizado aplicado. ¡Alucinante! ¡Prueba a cambiar `easeOutBounce` por algún otro [easing](http://package.elm-lang.org/packages/Dandandan/Easing/latest/Easing) y comprueba cómo queda!
+
+Para tener los dos cuadrados, conectamos todo en `SpinSquarePair`, pero ese código es casi idéntico al de los otros ejemplos de pares, el 2 y el 6.
+
+¡Muy bien, esos son los primeros pasos para hacer animaciones con esta librería! No está claro que hayamos dado en el clavo con todo aquí, así que haznos saber cómo van las cosas a medida que ganes experiencia. Con un poco de suerte podremos hacerlo incluso más fácil.
+
+> **Nota:** Espero que podamos construir algunas abstracciones sobre las ideas clave expuestas aquí. Este ejemplo realiza algunas tareas de bajo nivel, pero apuesto a que podemos encontrar algunos patrones decentes para facilitarlo a medida que trabajemos más en ello. Si te parece raro, ¡intenta hacer algo mejor y cuéntanoslo!
 
