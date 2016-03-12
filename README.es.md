@@ -1,5 +1,5 @@
 # La Arquitectura Elm
-Este tutorial esboza "La Arquitectura Elm" que verás en todos los programas escritos en [Elm][], desde [TodoMVC][] y [dreamwriter][] hasta las aplicaciones en producción en [NoRedInk][] y [CircuitHub][]. El patrón básico es útil tanto si estás escribiendo tu front-end con Elm o JS u otra cosa.
+Este tutorial esboza "La Arquitectura Elm" que verás en todos los programas escritos en [Elm][], desde [TodoMVC][] y [dreamwriter][] hasta las aplicaciones en producción en [NoRedInk][] y [CircuitHub][]. El patrón básico es útil tanto si estás escribiendo tu front-end con Elm, JS u otra cosa.
 
 [Elm]: http://elm-lang.org/
 [TodoMVC]: https://github.com/evancz/elm-todomvc
