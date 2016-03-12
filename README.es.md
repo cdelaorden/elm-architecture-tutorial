@@ -132,7 +132,7 @@ Esto significa que los valores fluyen en un programa Elm en una única direcció
 
 ![Resumen del grafo de señales](diagrams/signal-graph-summary.png)
 
-La parte azul es el núcleo de nuestro programa Elm, que es exactamente el patrón model/update/view del que hemos estado hablando hasta ahora. Cuando programas en Elm, puedes pensar principalmente sobre el contenido caja y avanzar bastante sin pensar en lo demás.
+La parte azul es el núcleo de nuestro programa Elm, que es exactamente el patrón model/update/view del que hemos estado hablando hasta ahora. Cuando programas en Elm, puedes pensar principalmente sobre el contenido de esa caja y avanzar bastante sin pensar en lo demás.
 
 Fíjate en que no estamos **ejecutando** acciones cuando se envían de vuelta a nuestra app. Simplemente estamos enviando datos (qué queremos hacer). Esta separación es un detalle clave, ya que mantiene nuestra lógica de modificación completamente separada del código de nuestra vista.
 
@@ -174,7 +174,7 @@ init top bottom =
     }
 ```
 
-Nuestro modelo es un registro con dos campos, uno para cada uno de los contadores que queremos mostrar en pantalla. Esto describe por completo todo el estado de la aplicación. Además tenemos una función `init` para crear un nuevo `Model` cuando queramos.
+Nuestro modelo es un registro con dos campos, uno para cada uno de los contadores que queremos mostrar en pantalla. Esto describe por completo todo el estado de la aplicación. Además tenemos una función `init` para crear un nuevo `Model` cuando queramos, que a su vez llama a la función `Counter.init` original para dar el valor inicial a cada uno.
 
 Después describimos el conjunto de **acciones** que queremos soportar. Esta vez nuestras características deberían ser: reiniciar todos los contadores, actualizar el contador superior (`topCounter`) o actualizar el inferior (`bottomCounter`).
 
@@ -216,9 +216,9 @@ view address model =
     ]
 ```
 
-Observa cómo podemos reutilizar la función `Counter.view` para los dos contadores. Para cada uno de ellos creamos una dirección de reenvío. Básicamente lo que estamos haciendo es decir, &ldquo;estos contadores etiquetan todos los mensajes salientes con `Top` o `Bottom` para que podamos distinguirlos.&rdquo;
+Observa cómo podemos reutilizar la función `Counter.view` para los dos contadores. Para cada uno de ellos creamos una dirección de reenvío (con `Signal.fowardTo address Bottom`). Básicamente lo que estamos haciendo es decir, &ldquo;estos contadores etiquetan todos los mensajes salientes con `Top` o `Bottom` para que podamos distinguirlos.&rdquo;
 
-Y eso es todo. Lo que es genial es que podemos seguir anidando mñas y más. Podemos coger el módulo `CounterPair`, exponer ciertos valores y funciones clave, y crear un par de pares de contadores en `CounterPairPair` o cualquier cosa que necesitemos.
+Y eso es todo. Lo que es genial es que podemos seguir anidando más y más. Podemos coger el módulo `CounterPair`, exponer ciertos valores y funciones clave, y crear un par de pares de contadores en `CounterPairPair` o cualquier cosa que necesitemos.
 
 ### Ejemplo 3: Lista dinámica de Contadores
 **[demo](http://evancz.github.io/elm-architecture-tutorial/examples/3.html) / [ver código](examples/3/)**
@@ -279,7 +279,8 @@ update action model =
       in
           { model | counters = List.map updateCounter model.counters }
 ```
-Aquí una descripción por encima de cada caso:
+Veamos una descripción por encima de cada caso:
+
     * `Insert` &mdash; Primero creamos un nuevo contador y lo ponemos al final de nuestra lista de contadores. Después incrementamos nuestro `nextId` para tener uno listo para la siguiente vez.
     
     * `Remove` &mdash; Tira el primer contador de nuestra lista.
