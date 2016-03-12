@@ -13,9 +13,9 @@ La Arquitectura Elm es un patrón simple para componentes anidables infinitament
   2. [Par de contadores](http://evancz.github.io/elm-architecture-tutorial/examples/2.html)
   3. [Lista de contadores](http://evancz.github.io/elm-architecture-tutorial/examples/3.html)
   4. [Lista de contadores (variación)](http://evancz.github.io/elm-architecture-tutorial/examples/4.html)
-  5. [Cargador de GIFs](http://evancz.github.io/elm-architecture-tutorial/examples/5.html)
-  6. [Par de cargadores de GIFs](http://evancz.github.io/elm-architecture-tutorial/examples/6.html)
-  7. [Lista de cargadores de GIFs](http://evancz.github.io/elm-architecture-tutorial/examples/7.html)
+  5. [Visor de GIFs aleatorios](http://evancz.github.io/elm-architecture-tutorial/examples/5.html)
+  6. [Par de visorores de GIFs](http://evancz.github.io/elm-architecture-tutorial/examples/6.html)
+  7. [Lista de visores de GIFs](http://evancz.github.io/elm-architecture-tutorial/examples/7.html)
   8. [Par de cuadrados animados](http://evancz.github.io/elm-architecture-tutorial/examples/8.html)
 
 
@@ -307,8 +307,254 @@ En la función `view` de verdad, mapeamos `viewCounter` sobre todos nuestros con
 
 Este truco del ID se puede emplear siempre que quieras un número dinámico de subcomponentes. Los contadores son muy básicos, pero este patrón funcionaría exactamente igual si tuvieras una lista de perfiles de usuarios, tweets, noticias o detalles de productos.
 
+### Ejemplo 4: Una lista más guay de Contadores
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/4.html) / [ver código](examples/4/)**
+
+Vale, mantener las cosas simples y modulares con una lista dinámica de contadores es genial, pero en lugar de un botón general de eliminar, ¿qué pasaría si cada contador tuviera su botón específico de eliminar? ¡Seguro que *eso* nos va complica las cosas!
+
+Nah, funciona.
+
+En este caso nuestros objetivos significan que necesitamos una manera de ver un `Counter` que añada un botón de eliminar. Curiosamente, podemos mantener la función `view` de la versión anterior y añadir una nueva función `viewWithRemoveButton` (vista con botón eliminar) al módulo `Counter` que proporcione una vista ligeramente diferente de nuestro `Model` subyacente. Es bastante guay. No necesitamos duplicar código o hacer locuras con tipos derivados o sobrecargas. ¡Simplemente añadimos una nueva función a la API pública para exponer la nueva funcionalidad!
+
+```elm
+module Counter (Model, init, Action, update, view, viewWithRemoveButton, Context) where
+
+...
+
+type alias Context =
+    { actions : Signal.Address Action
+    , remove : Signal.Address ()
+    }
+
+viewWithRemoveButton : Context -> Model -> Html
+viewWithRemoveButton context model =
+  div []
+    [ button [ onClick context.actions Decrement ] [ text "-" ]
+    , div [ countStyle ] [ text (toString model) ]
+    , button [ onClick context.actions Increment ] [ text "+" ]
+    , div [ countStyle ] []
+    , button [ onClick context.remove () ] [ text "X" ]
+    ]
+```
+La función `viewWithRemoveButton` añade el botón extra. Observa que los botones incrementar/decrementar envían mensajes a la dirección `actions` pero el de eliminar los envía a la dirección `remove`. Estos mensajes que enviamos a `remove` básicamente dicen, &ldquo;¡oye, quien pertenezca, elimíname!&rdquo; Es tarea de quien quiera que sea dueño de ese contador particular llevar a cabo la eliminación.
+
+Ahora que ya tenemos nuestra nueva función `viewWithRemoveButton`, podemos crear un módulo `CounterList` que incluya todos los contadores individuales. El `Model` es idéntico al del ejemplo 3: una lista de contadores y un ID único.
 
 
+```elm
+type alias Model =
+    { counters : List ( ID, Counter.Model )
+    , nextID : ID
+    }
+
+type alias ID = Int
+```
+Nuestras acciones son un poco diferentes. En lugar de eliminar cualquier contador, queremos eliminar uno específico, por lo que el caso `Remove` ahora tiene un ID.
+
+```elm
+type Action
+    = Insert
+    | Remove ID
+    | Modify ID Counter.Action
+```
+
+La función `update` es muy similar a la del ejemplo 3 también.
+
+```elm
+update : Action -> Model -> Model
+update action model =
+  case action of
+    Insert ->
+      { model |
+          counters = ( model.nextID, Counter.init 0 ) :: model.counters,
+          nextID = model.nextID + 1
+      }
+
+    Remove id ->
+      { model |
+          counters = List.filter (\(counterID, _) -> counterID /= id) model.counters
+      }
+
+    Modify id counterAction ->
+      let updateCounter (counterID, counterModel) =
+            if counterID == id
+                then (counterID, Counter.update counterAction counterModel)
+                else (counterID, counterModel)
+      in
+          { model | counters = List.map updateCounter model.counters }
+```
+En el caso de `Remove`, sacamos el contador cuyo ID coincide con el que tenemos que eliminar, filtrando la lista. El resto de casos son casi iguales a cómo eran antes.
+
+Para terminar, unimos todas las piezas en la función `view`:
+
+```elm
+view : Signal.Address Action -> Model -> Html
+view address model =
+  let insert = button [ onClick address Insert ] [ text "Add" ]
+  in
+      div [] (insert :: List.map (viewCounter address) model.counters)
+
+viewCounter : Signal.Address Action -> (ID, Counter.Model) -> Html
+viewCounter address (id, model) =
+  let context =
+        Counter.Context
+          (Signal.forwardTo address (Modify id))
+          (Signal.forwardTo address (always (Remove id)))
+  in
+      Counter.viewWithRemoveButton context model
+```
+
+En la función `viewCounter`, construimos el contexto (`Counter.Context`) para pasar las direcciones de reenvío necesarias. En ambos casos anotamos cada `Counter.Action` para que sepamos cuál debemos modificar o eliminar.
+
+## Lecciones Importantes Hasta Ahora
+**Patrón básico** &mdash; Todo se construye alrededor de un `Model`, una manera de actualizar (`update`) ese modelo, y una manera de ver (`view`) ese modelo. Todo es una variación de este patrón básico.
+
+**Anidar Módulos** &mdash; Las direcciones de reenvío (forward) nos facilitan anidar nuestro patrón básico, ocultando la implementación por completo. Podemos anidar este patrón tan profundo como queramos, y cada nivel sólo necesita saber qué pasa con el nivel inferior siguiente.
+
+**Añadir Contexto** &mdash; A veces para actualizar o ver nuestro modelo (funciones `update` y `view`), se necesita información adicional. Siempre podemos añadir algo de contexto (`Context`) a estas funciones y pasarle toda la información necesaria sin complicar nuestro `Model`.
+
+```elm
+update : Context -> Action -> Model -> Model
+view : Context' -> Model -> Html
+```
+
+En cada nivel de profundidad podemos derivar el `Context` específico necesario para cada submódulo.
+
+**Testing sencillo** &mdasg; Todas las funciones que hemos creado son [funciones puras][pure]. Esto hace que sea extremadamente fácil probar tu función `update`. No hace falta inicializar, simular ni configurar nada, simplemente llamas a la función con los argumentos que querrías testar.
+
+[pure]: http://en.wikipedia.org/wiki/Pure_function
+
+## Ejemplo 5: Visor de GIFs aleatorios
+
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/5.html) / [ver código](examples/5/)**
+
+Ya hemos visto cómo crear componentes y anidarlos cuanto queramos, ¿pero qué ocurre si queremos hacer una petición HTTP a alguien ahí fuera? ¿O comunicarnos con una base de datos? Este ejemplo empieza utilizando el [paquete `elm-effects`][fx] para crear un componente sencillo que trae GIFs aleatorios de giphy.com con el tema "funny cats" (gatos divertidos).
+
+[fx]: http://package.elm-lang.org/packages/evancz/elm-effects/latest
+
+Cuando mires [la implementación](examples/5/RandomGif.elm), observa que es prácticamente el mismo código que el contador del ejemplo 1. El `Model` es muy típico:
+
+```elm
+type alias Model =
+    { topic : String
+    , gifUrl : String
+    }
+```
+Tenemos que saber cual es el tema (`topic`) del visor y la URL del GIF (`gifUrl`) que estamos mostrando en cada momento. La única diferencia en este ejemplo es que las funciones `init` y `update` tienen tipos más elaborados:
+
+```elm
+init : String -> (Model, Effects Action)
+
+update : Action -> Model -> (Model, Effects Action)
+```
+En lugar de devolver solo un nuevo `Model` también devolvemos algunos efectos que nos gustaría ejecutar. Así que utilizaremos la API de `Effects` [fx_api], que es más o menos algo como esto:
+
+[fx_api]: http://package.elm-lang.org/packages/evancz/elm-effects/latest/Effects
+
+```elm
+module Effects where
+
+type Effects a
+
+none : Effects a
+  -- don't do anything
+
+task : Task Never a -> Effects a
+  -- request a task, do HTTP and database stuff
+```
+
+El tipo `Effects` es básicamente una estructura de datos que guarda un montón de tareas (task) independientes que serán ejecutadas en algún momento posterior. Vamos a coger una sensación mejor de cómo funciona comprobando lo que hace `update` en este ejemplo:
+
+```elm
+type Action
+    = RequestMore
+    | NewGif (Maybe String)
+
+
+update : Action -> Model -> (Model, Effects Action)
+update msg model =
+  case msg of
+    RequestMore ->
+      ( model
+      , getRandomGif model.topic
+      )
+
+    NewGif maybeUrl ->
+      ( Model model.topic (Maybe.withDefault model.gifUrl maybeUrl)
+      , Effects.none
+      )
+
+-- getRandomGif : String -> Effects Action
+```
+
+El usuario puede lanzar una acción `RequestMore` (pedir más) haciendo clic en el botón apropiado, y cuando el servidor responda lo hará mediante una acción `NewGif`. Manejamos ambos casos en nuestra función `update`.
+
+En el caso de `RequestMore` primero devolvemos el modelo existente. El usuario ha hecho clic en un botón, no hay nada que cambie en este momento. Además creamos una `Effects Action` llamando a la función `getRandomGif` con el tema a buscar. Veremos esta función pronto. Por ahora sólo nos hace falta saber que cuando se ejecuta una `Effects Action`, generará un montón de valores `Action` que pasarán por nuestra aplicación. Al final, `getRandomGif model.topic` acabará resultando en una acción como esta:
+
+```elm
+NewGif (Just "http://s3.amazonaws.com/giphygifs/media/ka1aeBvFCSLD2/giphy.gif")
+```
+Devuelve un `Maybe` (quizá) porque la petición al servidor puede fallar. Esa acción será recibida de nuevo por nuestra función `update`. Así que cuando el código vaya por la ruta `NewGif` simplemente actualizamos en el modelo la `gifUrl` actual, si es posible. Si la petición falló, mantenemos la misma `model.gifUrl`.
+
+Algo parecido ocurre en `init` que define el modelo inicial y solicita una GIF del tema correcto a la API de giphy.com.
+
+```elm
+init : String -> (Model, Effects Action)
+init topic =
+  ( Model topic "assets/waiting.gif"
+  , getRandomGif topic
+  )
+
+-- getRandomGif : String -> Effects Action
+```
+Como hemos dicho, cuando el efecto del GIF aleatorio termine, producirá una `Action` que será recibida por nuestra función `update`.
+
+> **Nota:** Hasta ahora hemos estado utilizando el módulo `StartApp.Simple` del [paquete start-app](http://package.elm-lang.org/packages/evancz/start-app/latest), pero esta vez lo actualizamos al módulo `StartApp`, que es capaz de gestionar la complejidad de apps web más realistas. Tiene una [API ligeramente más elaborada](http://package.elm-lang.org/packages/evancz/start-app/latest/StartApp). El cambio crucial es que puede manejar nuestras nuevos tipos en `init` y `update`.
+
+Uno de los aspectos cruciales de este ejemplo es la función `getRandomGif` que realmente describe cómo obtener un GIF aleatorio. Utiliza [tasks][] (tareas) y el [paquete `Http`][http], y voy a intentar ofrecer una visión general de cómo se usan estas cosas a medida que lo vayamos viendo. Veamos el código:
+
+[tasks]: http://elm-lang.org/guide/reactivity#tasks
+[http]: http://package.elm-lang.org/packages/evancz/elm-http/latest
+
+```elm
+getRandomGif : String -> Effects Action
+getRandomGif topic =
+  Http.get decodeImageUrl (randomUrl topic)
+    |> Task.toMaybe
+    |> Task.map NewGif
+    |> Effects.task
+
+-- La primera línea ha creado una petición HTTP GET. Intenta
+-- traer JSON en la dirección `randomUrl topic` y decodifica 
+-- el resultado con `decodeImageUrl`. Las dos están definidas
+-- más abajo.
+
+-- Después usamos `Task.toMaybe` para capturar posibles fallos y
+-- aplicamos la etiqueta `NewGif` para convertir el resultado 
+-- en una `Action`
+-- Para terminar lo convertimos en un valor `Effects` que podemos
+-- emplear en las funciones `init` o `update`
+
+-- Dado un tema, construye una URL para la API de giphy.com
+randomUrl : String -> String
+randomUrl topic =
+  Http.url "http://api.giphy.com/v1/gifs/random"
+    [ "api_key" => "dc6zaTOxFJmzC"
+    , "tag" => topic
+    ]
+
+
+-- Un decodificador JSPN que recibe un gran fragmento de datos
+-- desde giphy y extrae la cadena en `json.data.image_url`
+decodeImageUrl : Json.Decoder String
+decodeImageUrl =
+  Json.at ["data", "image_url"] Json.string
+```
+Una vez hemos escrito esto, ya podemos reutilizar `getRandomGif` en nuestras funciones `init` y `update`.
+
+Algo interesante sobre la tarea devuelta por `getRandomGif` es que no puede fallar `Never` (nunca). La idea es que cualquier posible fallo *tiene que* ser manejado de forma explícita. No queremos tareas que fallen silenciosamente.
+
+Voy a tratar de explicar exactamente cómo funciona eso, pero no es imprescindible comprender todos los detalles para utilizar estas cosas. Veamos, cada `Task` tiene un tipo "éxito" y un tipo "fallo". Por ejemplo, una tarea HTTP puede tener un tipo como `Task Http.Error String` tal que fallará con un `Http.Error` o terminará con éxito con un `String`. Esto hace que podamos encadenar de forma agradable varias tareas juntas sin preocuparnos demasiado por los errores. Supongamos que nuestro componente lanza una tarea, pero ésta falla. ¿Qué ocurre entonces? ¿Quién se entera? ¿Cómo nos recuperamos del error? Al hacer el tipo fallo `Never` forzamos que cualquier error vaya en el tipo "éxito" de forma que puede ser gestionado de forma explícita en el componente. En nuestro caso, usamos `Task.toMaybe: Task x a -> Task y (Maybe a` para que nuestra función `update` gestione los fallos de HTTP (con el `Maybe.withDefault` para dar un valor por defecto en caso de error). Esto significa que las tareas no pueden fallar sin que nos enteremos, ya que gestionamos los posibles errores manualmente, de forma explícita.
 
 
 
