@@ -220,6 +220,92 @@ Observa cómo podemos reutilizar la función `Counter.view` para los dos contado
 
 Y eso es todo. Lo que es genial es que podemos seguir anidando mñas y más. Podemos coger el módulo `CounterPair`, exponer ciertos valores y funciones clave, y crear un par de pares de contadores en `CounterPairPair` o cualquier cosa que necesitemos.
 
+### Ejemplo 3: Lista dinámica de Contadores
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/3.html) / [ver código](examples/3/)**
+Un par de contadores molan, ¿pero qué me dices de una lista de contadores en la que podemos añadir y quitar contadores como queramos? ¿Nos serviría este patrón para eso también?
+
+Una vez más podemos reutilizar el módulo `Counter` exactamente como lo dejamos en el ejercicio 1 y en el 2.
+
+```elm
+module Counter (Model, init, Action, update, view)
+```
+
+Esto implica que ya podemos empezar nuestro módulo `CounterList`. Como siempre, empezamos con nuestro modelo:
+
+```elm
+type alias Model =
+    { counters : List ( ID, Counter.Model )
+    , nextID : ID
+    }
+
+type alias ID = Int
+```
+Ahora nuestro modelo tiene una lista de contadores, cada uno identificado con un ID único. Estos IDs nos permiten distinguirlos entre sí, y así si necesitamos actualizar el contador número 4 tenemos una buena forma de hacer referencia a éste. (Este ID también nos da algo conveniente que usar como [`key`][key] (clave) cuando pensamos en optimizar el rendering, ¡pero ese no es el objetivo de este tutorial!) Nuestro modelo también guarda un `nextId` (siguiente id) que nos servirá para asignar IDs únicos a los contadores a medida que los vayamos añadiendo. 
+
+[key]: http://package.elm-lang.org/packages/evancz/elm-html/latest/Html-Attributes#key
+
+Ahora podemos definir el conjunto de acciones que se pueden ejecutar sobre nuestro modelo. Queremos poder añadir y eliminar contadores, y modificar contadores específicos.
+
+```elm
+type Action
+    = Insert
+    | Remove
+    | Modify ID Counter.Action
+```
+
+Nuestro [tipo unión][] `Action` es increíblemente parecido a la descripción a alto nivel. Ya podemos escribir nuestra función `update`.
+
+```elm
+update : Action -> Model -> Model
+update action model =
+  case action of
+    Insert ->
+      let newCounter = ( model.nextID, Counter.init 0 )
+          newCounters = model.counters ++ [ newCounter ]
+      in
+          { model |
+              counters = newCounters,
+              nextID = model.nextID + 1
+          }
+
+    Remove ->
+      { model | counters = List.drop 1 model.counters }
+
+    Modify id counterAction ->
+      let updateCounter (counterID, counterModel) =
+            if counterID == id
+                then (counterID, Counter.update counterAction counterModel)
+                else (counterID, counterModel)
+      in
+          { model | counters = List.map updateCounter model.counters }
+```
+Aquí una descripción por encima de cada caso:
+    * `Insert` &mdash; Primero creamos un nuevo contador y lo ponemos al final de nuestra lista de contadores. Después incrementamos nuestro `nextId` para tener uno listo para la siguiente vez.
+    
+    * `Remove` &mdash; Tira el primer contador de nuestra lista.
+
+    * `Modify` &mdash; Ejecuta la función `updateCounter` (actualizar contador) sobre cada uno de nuestros contadores. Si encontramos uno con el ID indicado, ejecutamos la `Action` dada sobre éste.
+
+Sólo nos queda definir la vista generada por la función `view`.
+
+```elm
+view : Signal.Address Action -> Model -> Html
+view address model =
+  let counters = List.map (viewCounter address) model.counters
+      remove = button [ onClick address Remove ] [ text "Remove" ]
+      insert = button [ onClick address Insert ] [ text "Add" ]
+  in
+      div [] ([remove, insert] ++ counters)
+
+viewCounter : Signal.Address Action -> (ID, Counter.Model) -> Html
+viewCounter address (id, model) =
+  Counter.view (Signal.forwardTo address (Modify id)) model
+```
+La parte divertida aquí es la función `viewCounter`. Utiliza la antigua función `Counter.view`, pero en este caso proporcionamos una dirección de reenvío que anota todos los mensajes con el ID del contador particular que estamos pintando.
+
+En la función `view` de verdad, mapeamos `viewCounter` sobre todos nuestros contadores y creamos botones de añadir y eliminar que informan a la dirección `address` directamente.
+
+Este truco del ID se puede emplear siempre que quieras un número dinámico de subcomponentes. Los contadores son muy básicos, pero este patrón funcionaría exactamente igual si tuvieras una lista de perfiles de usuarios, tweets, noticias o detalles de productos.
 
 
 
