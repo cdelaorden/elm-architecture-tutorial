@@ -132,9 +132,9 @@ Esto significa que los valores fluyen en un programa Elm en una única direcció
 
 ![Resumen del grafo de señales](diagrams/signal-graph-summary.png)
 
-La parte azul es el núcleo de nuestro programa Elm, que es exactamente el patrón model/update/view del que hemos estado hablando hasta ahora. Cuando programas en Elm, puedes pensar principalmente sobre esta caja y realizar grandes progresos.
+La parte azul es el núcleo de nuestro programa Elm, que es exactamente el patrón model/update/view del que hemos estado hablando hasta ahora. Cuando programas en Elm, puedes pensar principalmente sobre el contenido caja y avanzar bastante sin pensar en lo demás.
 
-Fíjate en que no estamos **realizando** acciones cuando son enviadas de vuelta a nuestra app. Simplemente estamos enviando datos. Esta separación es un detalle clave, ya que mantiene nuestra lógica completamente separada del código de nuestra vista.
+Fíjate en que no estamos **ejecutando** acciones cuando se envían de vuelta a nuestra app. Simplemente estamos enviando datos (qué queremos hacer). Esta separación es un detalle clave, ya que mantiene nuestra lógica de modificación completamente separada del código de nuestra vista.
 
 ## Ejemplo 2: Par de contadores
 **[demo](http://evancz.github.io/elm-architecture-tutorial/examples/2.html) / [ver código](examples/2/)**
