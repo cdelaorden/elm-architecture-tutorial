@@ -65,6 +65,101 @@ Este tutorial trata completamente de este patrón, y de pequeñas variaciones y 
 
 ## Ejemplo 1: Un contador
 
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/1.html) / [ver código](examples/1/)**
+
+Nuestro primer ejemplo es un simple contador que se puede incrementar o decrementar.
+
+[El código](examples/1/Counter.elm) empieza con un modelo muy simple. Sólo tenemos que llevar la cuenta de un único número:
+
+```elm
+type alias Model = Int
+```
+
+Si queremos actualizar nuestro modelo, vuelve a ser relativamente simple. Definimos una serie de acciones que se pueden llevar a cabo, y la función `update` que ejecuta realmente esas acciones:
+
+```elm
+type Action = Increment | Decrement
+
+update: Action -> Model -> Model
+update action model =
+    case action of
+        Increment -> model + 1
+        Decrement -> model - 1
+```
+
+Fíjate que nuestro [tipo unión][] `Action` no *hace* nada. Simplemente describe las acciones posibles. Si alguien decide que nuestro contador debería doblarse cuando se pulsa cierto botón, ese sería un nuevo caso en `Action`. Esto significa que nuestro código acaba siendo muy claro en cuanto a cómo se puede transformar nuestro modelo. Cualquiera que lea este código sabrá inmediatamente lo que se permite y lo que no. Además, sabrán exactamente como añadir funcionalidad de forma consistente.
+
+[tipo unión]: http://elm-lang.org/learn/Union-Types.elm
+
+Finalmente, creamos una forma de ver (`view`) nuestro `Model`. Estamos usando [elm-html][] para crear un poco de HTML para mostrar en el browser. Vamos a crear un div que contiene: un botón de decrementar, un div que muestra la cuenta actual, y un botón de incrementar.
+
+[elm-html]: http://elm-lang.org/blog/Blazing-Fast-Html.elm
+
+```elm
+view : Signal.Address Action -> Model -> Html
+view address model =
+  div []
+    [ button [ onClick address Decrement ] [ text "-" ]
+    , div [ countStyle ] [ text (toString model) ]
+    , button [ onClick address Increment ] [ text "+" ]
+    ]
+
+countStyle : Attribute
+countStyle =
+  ...
+```
+
+La parte difícil de nuestra función `view` es la `Address` (dirección). ¡Entraremos de lleno en eso en la siguiente sección! Por ahora, sólo quiero que te des cuenta de que **este código es completamente declarativo**. Recibimos un `Model` y generamos un poco de `Html`. Eso es todo. En ningún momento modificamos el DOM manualmente, lo cual le da a la librería [mucha más libertad para hacer optimizaciones inteligentes][elm-html] y en realidad hace el rendering *más rápido* al final. Es de locos. Además, `view` es simplemente una función con lo que tenemos acceso a toda la potencia del sistema de módulos, los frameworks de test y las librerías de Elm al crear vistas.
+
+Este patrón es la esencia del diseño de programas Elm. Cada ejemplo que veamos de ahora en adelante será una ligera variación de este patrón básico: `Model`, `update`, `view`.
+
+## Iniciar el programa
+Prácticamente todos los programas Elm tendrán un pequeño código que maneja toda la aplicación. Para cada ejemplo en este tutorial, ese código está separado en el archivo `Main.elm`. En nuestro ejemplo del contador, la parte interesante es así:
+
+```elm
+import Counter exposing (update, view)
+import StartApp.Simple exposing (start)
+
+main =
+  start { model = 0, update = update, view = view }
+```
+
+Estamos usando el paquete [`StartApp`](https://github.com/evancz/start-app) para conectar nuestro modelo con las funciones de actualización y vista. Es un pequeño envoltorio sobre [señales de Elm](http://elm-lang.org/learn/Using-Signals.elm) para que no tengas que entrar en ese concepto todavía.
+
+La clave para interconectar nuestra aplicación es el concepto de `Address` (dirección). Cada manejador de eventos en nuestra función `view` informa a una dirección específica. Simplemente le envía fragmentos de datos. El paquete `StartApp` monitoriza todos los mensajes que llegan a esta dirección y se los inyecta a la función `update`. El modelo se actualiza y [elm-html][] se encarga de representar los cambios de manera eficiente.
+
+Esto significa que los valores fluyen en un programa Elm en una única dirección, algo como esto:
+
+![Resumen del grafo de señales](diagrams/signal-graph-summary.png)
+
+La parte azul es el núcleo de nuestro programa Elm, que es exactamente el patrón model/update/view del que hemos estado hablando hasta ahora. Cuando programas en Elm, puedes pensar principalmente sobre esta caja y realizar grandes progresos.
+
+Fíjate en que no estamos **realizando** acciones cuando son enviadas de vuelta a nuestra app. Simplemente estamos enviando datos. Esta separación es un detalle clave, ya que mantiene nuestra lógica completamente separada del código de nuestra vista.
+
+## Ejemplo 2: Par de contadores
+**[demo](http://evancz.github.io/elm-architecture-tutorial/examples/2.html) / [ver código](examples/2/)**
+
+En el ejemplo 1 creamos un contador básico pero ¿cómo escala este patrón si queremos *dos* contadores? ¿Podemos mantenerlo todo modularizado?
+
+¿No sería genial si pudiésemos reutilizar todo el código del ejemplo 1? Lo sorprendente de la Arquitectura Elm es que **podemos reutilizar código sin cambiar absolutamente nada**. Cuando creamos el módulo `Counter` en el ejemplo anterior, encapsulamos todos los detalles de implementación así que podemos utilizarlo en cualquier otro sitio:
+
+
+```elm
+module Counter (Model, init, Action, update, view) where
+
+type Model
+
+init : Int -> Model
+
+type Action
+
+update : Action -> Model -> Model
+
+view : Signal.Address Action -> Model -> Html
+```
+
+
+
 
 
 
