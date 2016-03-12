@@ -26,3 +26,47 @@ Un aspecto muy interesante de la arquitectura en todos estos programas es que *e
 **Nota**: Para seguir este tutorial con código, [instala Elm](http://elm-lang.org/install) y haz un fork de este repo. Cada ejemplo en el tutorial incluye instrucciones para ejecutarlo.
 
 ## El Patrón Básico
+
+La lógica de cualquier programa Elm se divide entre partes claramente separadas:
+
+* model (modelo)
+* update (actualizar)
+* view (vista)
+
+Básicamente puedes empezar con el siguiente esqueleto y añadir detalles poco a poco para tu caso particular.
+
+> Si es la primera vez que lees código Elm, echa un vistazo a la [documentación del lenguaje](http://elm-lang.org/docs) que abarca todo desde la sintaxis hasta llegar a una "mentalidad funcional". ¡Las dos primeras secciones de la [guía completa](http://elm-lang.org/docs#complete-guide) te darán soltura!
+
+```elm
+-- MODEL
+
+type alias Model = { ... }
+
+
+-- UPDATE
+
+type Action = Reset | ...
+
+update : Action -> Model -> Model
+update action model =
+  case action of
+    Reset -> ...
+    ...
+
+
+-- VIEW
+
+view : Model -> Html
+view =
+  ...
+```
+
+Este tutorial trata completamente de este patrón, y de pequeñas variaciones y ampliaciones.
+
+## Ejemplo 1: Un contador
+
+
+
+
+
+
