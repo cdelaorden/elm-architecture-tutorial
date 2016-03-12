@@ -7,7 +7,7 @@ Este tutorial esboza "La Arquitectura Elm" que verás en todos los programas esc
 [NoRedInk]: https://www.noredink.com/
 [CircuitHub]: https://www.circuithub.com/
 
-La Arquitecutra Elm es un patrón simple para componentes anidables infinitamente. Es genial para la modularidad, reutilización del código, y pruebas. Al final, este patrón facilita crear aplicaciones web complejas de manera modular. Repasaremos 8 ejemplos, construyendo lentamente los principios y patrones fundamentales:
+La Arquitectura Elm es un patrón simple para componentes anidables infinitamente. Es genial para la modularidad, reutilización del código, y pruebas. Al final, este patrón facilita crear aplicaciones web complejas de manera modular. Repasaremos 8 ejemplos, construyendo lentamente los principios y patrones fundamentales:
 
   1. [Contador](http://evancz.github.io/elm-architecture-tutorial/examples/1.html)
   2. [Par de contadores](http://evancz.github.io/elm-architecture-tutorial/examples/2.html)
