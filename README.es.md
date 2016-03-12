@@ -281,11 +281,11 @@ update action model =
 ```
 Veamos una descripción por encima de cada caso:
 
-    * `Insert` &mdash; Primero creamos un nuevo contador y lo ponemos al final de nuestra lista de contadores. Después incrementamos nuestro `nextId` para tener uno listo para la siguiente vez.
-    
-    * `Remove` &mdash; Tira el primer contador de nuestra lista.
+* `Insert` &mdash; Primero creamos un nuevo contador y lo ponemos al final de nuestra lista de contadores. Después incrementamos nuestro `nextId` para tener uno listo para la siguiente vez.
+  
+* `Remove` &mdash; Tira el primer contador de nuestra lista.
 
-    * `Modify` &mdash; Ejecuta la función `updateCounter` (actualizar contador) sobre cada uno de nuestros contadores. Si encontramos uno con el ID indicado, ejecutamos la `Action` dada sobre éste.
+* `Modify` &mdash; Ejecuta la función `updateCounter` (actualizar contador) sobre cada uno de nuestros contadores. Si encontramos uno con el ID indicado, ejecutamos la `Action` dada sobre éste.
 
 Sólo nos queda definir la vista generada por la función `view`.
 
